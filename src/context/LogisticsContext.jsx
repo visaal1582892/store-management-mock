@@ -10,15 +10,16 @@ export const LogisticsProvider = ({ children }) => {
     const [warehouses] = useState(() => getAllWarehouses());
     const [bookings, setBookings] = useState([]); // Array of booking objects
     // bookings structure: { id, vendorName, warehouseId, originalDate, revisedDate, slot, vehicleNumber, items, totalBoxes, documents, status, dropItems }
-    // Statuses: 'Confirmed', 'Delayed', 'Exception Requested', 'Exception Approved', 'Exception Rejected', 'Completed', 'Cancelled'
+    // Statuses: 'Confirmed', 'Delayed', 'Completed', 'Cancelled'
 
     const generateInitialSlots = (warehousesList) => {
         const today = new Date();
         const newSlots = {};
+        const TIME_SLOTS = ['09:00 - 12:00', '13:00 - 16:00', '16:00 - 19:00'];
 
         warehousesList.forEach(wh => {
             newSlots[wh.id] = {};
-            for (let i = 0; i < 30; i++) { // Generate for 30 days to cover 14-day check
+            for (let i = 0; i < 30; i++) { // Generate for 30 days
                 const date = new Date(today);
                 date.setDate(today.getDate() + i);
 
@@ -27,13 +28,15 @@ export const LogisticsProvider = ({ children }) => {
 
                 const dateString = date.toISOString().split('T')[0];
 
-                // Strict capacity between 2 and 3
-                const totalCapacity = Math.floor(Math.random() * 2) + 2;
+                // Initialize all 3 slots as Available
+                const slotDetails = {};
+                TIME_SLOTS.forEach(ts => slotDetails[ts] = 'Available');
 
                 newSlots[wh.id][dateString] = {
-                    total: totalCapacity,
+                    total: 3,
                     booked: 0,
-                    bookingIds: []
+                    bookingIds: [],
+                    slotDetails: slotDetails
                 };
             }
         });
@@ -43,15 +46,15 @@ export const LogisticsProvider = ({ children }) => {
     const [slots, setSlots] = useState(() => generateInitialSlots(getAllWarehouses()));
 
     const addBooking = (newBooking) => {
-        const { warehouseId, date } = newBooking;
+        const { warehouseId, date, slotTime } = newBooking;
 
         if (!slots[warehouseId] || !slots[warehouseId][date]) {
             throw new Error("Invalid slot or date (Sundays closed)");
         }
 
         const slotInfo = slots[warehouseId][date];
-        if (slotInfo.booked >= slotInfo.total) {
-            throw new Error("Slot capacity reached");
+        if (slotInfo.slotDetails[slotTime] !== 'Available') {
+            throw new Error("Selected time slot is already booked");
         }
 
         const bookingId = `BKG-${Math.floor(Math.random() * 10000)}`;
@@ -60,6 +63,7 @@ export const LogisticsProvider = ({ children }) => {
             id: bookingId,
             status: 'Confirmed',
             originalDate: date,
+            slot: slotTime, // Persist slot time
             history: [{ status: 'Confirmed', timestamp: new Date().toISOString() }]
         };
 
@@ -71,75 +75,62 @@ export const LogisticsProvider = ({ children }) => {
                 [date]: {
                     ...prev[warehouseId][date],
                     booked: prev[warehouseId][date].booked + 1,
-                    bookingIds: [...prev[warehouseId][date].bookingIds, bookingId]
+                    bookingIds: [...prev[warehouseId][date].bookingIds, bookingId],
+                    slotDetails: {
+                        ...prev[warehouseId][date].slotDetails,
+                        [slotTime]: 'Booked'
+                    }
                 }
             }
         }));
         return bookingWithId;
     };
 
+    const cancelBooking = (bookingId) => {
+        setBookings(prev => prev.map(b => {
+            if (b.id === bookingId) {
+                return { ...b, status: 'Cancelled', history: [...b.history, { status: 'Cancelled', timestamp: new Date().toISOString() }] };
+            }
+            return b;
+        }));
+
+        // Restore slot availability
+        const booking = bookings.find(b => b.id === bookingId);
+        if (booking && booking.status !== 'Cancelled') {
+            const { warehouseId, originalDate, slot } = booking;
+            setSlots(prev => ({
+                ...prev,
+                [warehouseId]: {
+                    ...prev[warehouseId],
+                    [originalDate]: {
+                        ...prev[warehouseId][originalDate],
+                        booked: Math.max(0, prev[warehouseId][originalDate].booked - 1),
+                        slotDetails: {
+                            ...prev[warehouseId][originalDate].slotDetails,
+                            [slot]: 'Available'
+                        }
+                    }
+                }
+            }));
+        }
+    };
+
     const markAsDelayed = (bookingId) => {
         setBookings(prev => prev.map(b => {
             if (b.id === bookingId) {
-                return {
-                    ...b,
-                    status: 'Delayed',
-                    history: [...b.history, { status: 'Delayed', timestamp: new Date().toISOString() }]
-                };
-            }
-            return b;
-        }));
-    };
-
-    const requestException = (bookingId, exceptionData) => {
-        setBookings(prev => prev.map(b => {
-            if (b.id === bookingId) {
-                return {
-                    ...b,
-                    status: 'Exception Requested',
-                    exceptionDetails: exceptionData,
-                    history: [...b.history, { status: 'Exception Requested', timestamp: new Date().toISOString() }]
-                };
-            }
-            return b;
-        }));
-    };
-
-    const processException = (bookingId, action, remarks) => { // action: 'Approve' or 'Reject'
-        setBookings(prev => prev.map(b => {
-            if (b.id === bookingId) {
-                const newStatus = action === 'Approve' ? 'Exception Approved' : 'Exception Rejected';
+                // Toggle Logic: If already delayed, revert to Confirmed. Else mark Delayed.
+                const newStatus = b.status === 'Delayed' ? 'Confirmed' : 'Delayed';
                 return {
                     ...b,
                     status: newStatus,
-                    warehouseRemarks: remarks,
-                    history: [...b.history, { status: newStatus, timestamp: new Date().toISOString(), remarks }]
+                    history: [...b.history, { status: newStatus, timestamp: new Date().toISOString() }]
                 };
             }
             return b;
         }));
     };
 
-    // Helper to check next 14 days availability
-    const check14DayAvailability = (warehouseId, fromDate) => {
-        const start = new Date(fromDate);
-        let available = false;
 
-        for (let i = 1; i <= 14; i++) {
-            const d = new Date(start);
-            d.setDate(start.getDate() + i);
-            const dateStr = d.toISOString().split('T')[0];
-
-            if (slots[warehouseId]?.[dateStr]) {
-                const slot = slots[warehouseId][dateStr];
-                if (slot.booked < slot.total) { // simplistic check
-                    available = true;
-                    break;
-                }
-            }
-        }
-        return available;
-    };
 
     const value = {
         warehouses,
@@ -147,9 +138,7 @@ export const LogisticsProvider = ({ children }) => {
         slots,
         addBooking,
         markAsDelayed,
-        requestException,
-        processException,
-        check14DayAvailability
+        cancelBooking
     };
 
     return (
