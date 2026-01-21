@@ -1,49 +1,22 @@
-import React, { createContext, useContext, useState } from 'react';
+import { createContext, useState, useContext } from 'react';
+import { generateInitialData } from './initialData';
 import { getAllWarehouses } from '../data/warehouses';
+import { BOOKING_STATUS } from '../utils/constants';
 
-const LogisticsContext = createContext();
+const LogisticsContext = createContext
+    ();
 
 export const useLogistics = () => useContext(LogisticsContext);
 
 export const LogisticsProvider = ({ children }) => {
     // Initialize warehouses and slots directly in useState to avoid useEffect setState
     const [warehouses] = useState(() => getAllWarehouses());
-    const [bookings, setBookings] = useState([]); // Array of booking objects
-    // bookings structure: { id, vendorName, warehouseId, originalDate, revisedDate, slot, vehicleNumber, items, totalBoxes, documents, status, dropItems }
-    // Statuses: 'Confirmed', 'Delayed', 'Completed', 'Cancelled'
 
-    const generateInitialSlots = (warehousesList) => {
-        const today = new Date();
-        const newSlots = {};
-        const TIME_SLOTS = ['09:00 - 12:00', '13:00 - 16:00', '16:00 - 19:00'];
+    // Use centralized generator
+    const [initialData] = useState(() => generateInitialData());
 
-        warehousesList.forEach(wh => {
-            newSlots[wh.id] = {};
-            for (let i = 0; i < 30; i++) { // Generate for 30 days
-                const date = new Date(today);
-                date.setDate(today.getDate() + i);
-
-                // Skip Sundays
-                if (date.getDay() === 0) continue;
-
-                const dateString = date.toISOString().split('T')[0];
-
-                // Initialize all 3 slots as Available
-                const slotDetails = {};
-                TIME_SLOTS.forEach(ts => slotDetails[ts] = 'Available');
-
-                newSlots[wh.id][dateString] = {
-                    total: 3,
-                    booked: 0,
-                    bookingIds: [],
-                    slotDetails: slotDetails
-                };
-            }
-        });
-        return newSlots;
-    };
-
-    const [slots, setSlots] = useState(() => generateInitialSlots(getAllWarehouses()));
+    const [bookings, setBookings] = useState(initialData.bookings);
+    const [slots, setSlots] = useState(initialData.slots);
 
     const addBooking = (newBooking) => {
         const { warehouseId, date, slotTime } = newBooking;
@@ -61,10 +34,11 @@ export const LogisticsProvider = ({ children }) => {
         const bookingWithId = {
             ...newBooking,
             id: bookingId,
-            status: 'Confirmed',
+            status: BOOKING_STATUS.PENDING, // Default for new
+            boxes: newBooking.boxes || 0,
             originalDate: date,
             slot: slotTime, // Persist slot time
-            history: [{ status: 'Confirmed', timestamp: new Date().toISOString() }]
+            history: [{ status: BOOKING_STATUS.PENDING, timestamp: new Date().toISOString() }]
         };
 
         setBookings(prev => [...prev, bookingWithId]);
@@ -89,7 +63,7 @@ export const LogisticsProvider = ({ children }) => {
     const cancelBooking = (bookingId) => {
         setBookings(prev => prev.map(b => {
             if (b.id === bookingId) {
-                return { ...b, status: 'Cancelled', history: [...b.history, { status: 'Cancelled', timestamp: new Date().toISOString() }] };
+                return { ...b, status: BOOKING_STATUS.CANCELLED, history: [...b.history, { status: BOOKING_STATUS.CANCELLED, timestamp: new Date().toISOString() }] };
             }
             return b;
         }));
@@ -115,15 +89,64 @@ export const LogisticsProvider = ({ children }) => {
         }
     };
 
-    const markAsDelayed = (bookingId) => {
+
+
+    const approveBooking = (bookingId) => {
         setBookings(prev => prev.map(b => {
             if (b.id === bookingId) {
-                // Toggle Logic: If already delayed, revert to Confirmed. Else mark Delayed.
-                const newStatus = b.status === 'Delayed' ? 'Confirmed' : 'Delayed';
                 return {
                     ...b,
-                    status: newStatus,
-                    history: [...b.history, { status: newStatus, timestamp: new Date().toISOString() }]
+                    status: BOOKING_STATUS.BOOKED,
+                    history: [...b.history, { status: BOOKING_STATUS.BOOKED, timestamp: new Date().toISOString() }]
+                };
+            }
+            return b;
+        }));
+    };
+
+    const rejectBooking = (bookingId) => {
+        setBookings(prev => prev.map(b => {
+            if (b.id === bookingId) {
+                return {
+                    ...b,
+                    status: BOOKING_STATUS.REJECTED,
+                    history: [...b.history, { status: BOOKING_STATUS.REJECTED, timestamp: new Date().toISOString() }]
+                };
+            }
+            return b;
+        })); // Note: We do NOT free up the slot immediately in this mock logic 
+        // to keep history visible, but in real app we might.
+        // For now, let's keep it 'Booked' in the slot map but 'Rejected' in booking list.
+    };
+
+
+
+    const markVehicleEntered = (bookingId) => {
+        setBookings(prev => prev.map(b => {
+            if (b.id === bookingId) {
+                const now = new Date();
+                return {
+                    ...b,
+                    status: BOOKING_STATUS.VEHICLE_REACHED,
+                    entryTime: now.toISOString(), // Store full ISO string
+                    unloadingStatus: 'In-Progress',
+                    history: [...b.history, { status: BOOKING_STATUS.VEHICLE_REACHED, timestamp: now.toISOString() }]
+                };
+            }
+            return b;
+        }));
+    };
+
+    const markVehicleLeft = (bookingId) => {
+        setBookings(prev => prev.map(b => {
+            if (b.id === bookingId) {
+                const now = new Date();
+                return {
+                    ...b,
+                    status: BOOKING_STATUS.VEHICLE_LEFT,
+                    exitTime: now.toISOString(), // Store full ISO string
+                    unloadingStatus: 'Completed',
+                    history: [...b.history, { status: BOOKING_STATUS.VEHICLE_LEFT, timestamp: now.toISOString() }]
                 };
             }
             return b;
@@ -137,8 +160,49 @@ export const LogisticsProvider = ({ children }) => {
         bookings,
         slots,
         addBooking,
-        markAsDelayed,
-        cancelBooking
+        approveBooking,
+        rejectBooking,
+        markVehicleEntered,
+        markVehicleLeft,
+        updateSchedule: (warehouseId, date, activeSlots) => {
+            setSlots(prev => {
+                const currentDay = prev[warehouseId]?.[date];
+                const currentDetails = currentDay?.slotDetails || {};
+
+                const newDetails = {};
+                let newBookedCount = 0;
+                let newBookingIds = currentDay?.bookingIds || [];
+
+                activeSlots.forEach(time => {
+                    if (currentDetails[time]) {
+                        newDetails[time] = currentDetails[time]; // Keep existing state (Booked/Available)
+                        if (currentDetails[time] === 'Booked') newBookedCount++;
+                    } else {
+                        newDetails[time] = 'Available'; // New slot
+                    }
+                });
+
+                return {
+                    ...prev,
+                    [warehouseId]: {
+                        ...prev[warehouseId],
+                        [date]: {
+                            total: activeSlots.length,
+                            booked: newBookedCount,
+                            bookingIds: newBookingIds,
+                            slotDetails: newDetails
+                        }
+                    }
+                };
+            });
+        },
+        removeSchedule: (warehouseId, date) => {
+            setSlots(prev => {
+                const newWh = { ...prev[warehouseId] };
+                delete newWh[date];
+                return { ...prev, [warehouseId]: newWh };
+            });
+        }
     };
 
     return (

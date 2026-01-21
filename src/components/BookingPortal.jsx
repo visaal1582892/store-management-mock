@@ -1,16 +1,16 @@
 import React, { useState, useMemo } from 'react';
 import { useLogistics } from '../context/LogisticsContext';
 import { useAuth } from '../context/AuthContext';
-
+import { BOOKING_STATUS } from '../utils/constants';
 
 const BookingPortal = () => {
-    const { warehouses, slots, bookings, addBooking, markAsDelayed, cancelBooking } = useLogistics();
+    const { warehouses, slots, bookings, addBooking, cancelBooking } = useLogistics();
     const { user } = useAuth();
 
     // View State: 'new-booking' or 'my-bookings'
     const [viewMode, setViewMode] = useState('new-booking');
 
-    // Form State
+    // Form Statethe
     const [selectedState, setSelectedState] = useState('');
     const [warehouseId, setWarehouseId] = useState('');
     const [selectedDate, setSelectedDate] = useState('');
@@ -73,12 +73,7 @@ const BookingPortal = () => {
         }
     };
 
-    const handleMarkDelayed = (booking) => {
-        const action = booking.status === 'Delayed' ? 'MARK ON-TIME' : 'DELAY';
-        if (window.confirm(`Are you sure you want to ${action} for ${booking.vendorName}?`)) {
-            markAsDelayed(booking.id);
-        }
-    };
+
 
     const handleCancel = (booking) => {
         if (window.confirm(`Are you sure you want to CANCEL booking ${booking.id}?`)) {
@@ -252,34 +247,23 @@ const BookingPortal = () => {
                                 <table className="w-full text-left text-sm text-slate-600">
                                     <thead className="bg-gray-50 text-slate-800 font-semibold border-b border-gray-200">
                                         <tr>
-                                            <th className="px-6 py-4">Vehicle Number</th>
-                                            <th className="px-6 py-4">Status</th>
+                                            <th className="px-6 py-4">Date & Time</th>
                                             <th className="px-6 py-4">Warehouse</th>
-                                            <th className="px-6 py-4">Date</th>
-                                            <th className="px-6 py-4">Items</th>
+                                            <th className="px-6 py-4">Vehicle No</th>
+                                            <th className="px-6 py-4">Product</th>
+                                            <th className="px-6 py-4 text-center">Boxes</th>
+                                            <th className="px-6 py-4">Status</th>
+                                            <th className="px-6 py-4 text-center">Documents</th>
                                             <th className="px-6 py-4 text-right">Actions</th>
                                         </tr>
                                         {/* Filters Row */}
                                         <tr className="bg-gray-50/50 border-b border-gray-100">
                                             <th className="px-6 py-2">
                                                 <input
-                                                    type="text"
-                                                    placeholder="Search Vehicle..."
+                                                    type="date"
                                                     className="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-1.5"
-                                                    onChange={e => setFilters({ ...filters, vehicle: e.target.value })}
+                                                    onChange={e => setFilters({ ...filters, date: e.target.value })}
                                                 />
-                                            </th>
-                                            <th className="px-6 py-2">
-                                                <select
-                                                    className="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-1.5"
-                                                    onChange={e => setFilters({ ...filters, status: e.target.value })}
-                                                >
-                                                    <option value="">All</option>
-                                                    <option value="Confirmed">Confirmed</option>
-                                                    <option value="Delayed">Delayed</option>
-                                                    <option value="Completed">Completed</option>
-                                                    <option value="Cancelled">Cancelled</option>
-                                                </select>
                                             </th>
                                             <th className="px-6 py-2">
                                                 <input
@@ -291,9 +275,10 @@ const BookingPortal = () => {
                                             </th>
                                             <th className="px-6 py-2">
                                                 <input
-                                                    type="date"
+                                                    type="text"
+                                                    placeholder="Search Vehicle..."
                                                     className="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-1.5"
-                                                    onChange={e => setFilters({ ...filters, date: e.target.value })}
+                                                    onChange={e => setFilters({ ...filters, vehicle: e.target.value })}
                                                 />
                                             </th>
                                             <th className="px-6 py-2">
@@ -304,6 +289,17 @@ const BookingPortal = () => {
                                                     onChange={e => setFilters({ ...filters, items: e.target.value })}
                                                 />
                                             </th>
+                                            <th className="px-6 py-2"></th>
+                                            <th className="px-6 py-2">
+                                                <select
+                                                    className="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-1.5"
+                                                    onChange={e => setFilters({ ...filters, status: e.target.value })}
+                                                >
+                                                    <option value="">All</option>
+                                                    {Object.values(BOOKING_STATUS).map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                            </th>
+                                            <th className="px-6 py-2"></th>
                                             <th className="px-6 py-2"></th>
                                         </tr>
                                     </thead>
@@ -319,15 +315,11 @@ const BookingPortal = () => {
                                             })
                                             .map(bkg => (
                                                 <tr key={bkg.id} className="hover:bg-gray-50 transition-colors">
-                                                    <td className="px-6 py-4 font-medium text-slate-900">{bkg.vehicleNumber}</td>
                                                     <td className="px-6 py-4">
-                                                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide ${bkg.status === 'Confirmed' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                                                            bkg.status === 'Delayed' ? 'bg-rose-50 border-rose-100 text-rose-700' :
-                                                                bkg.status === 'Cancelled' ? 'bg-gray-100 border-gray-200 text-gray-500 line-through' :
-                                                                    'bg-amber-50 border-amber-100 text-amber-700'
-                                                            }`}>
-                                                            {bkg.status}
-                                                        </span>
+                                                        <div className="flex flex-col">
+                                                            <span className="tabular-nums">{new Date(bkg.date).toLocaleDateString()}</span>
+                                                            <span className="text-xs text-slate-500 font-medium">{bkg.slot || 'Pending Slot'}</span>
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col">
@@ -335,26 +327,36 @@ const BookingPortal = () => {
                                                             <span className="text-xs text-slate-400">{bkg.warehouseId}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex flex-col">
-                                                            <span className="tabular-nums">{new Date(bkg.date).toLocaleDateString()}</span>
-                                                            <span className="text-xs text-slate-500 font-medium">{bkg.slot || 'Pending Slot'}</span>
-                                                        </div>
-                                                    </td>
+                                                    <td className="px-6 py-4 font-medium text-slate-900">{bkg.vehicleNumber}</td>
                                                     <td className="px-6 py-4 max-w-xs truncate" title={bkg.items}>
                                                         {bkg.items}
                                                     </td>
+                                                    <td className="px-6 py-4 text-center font-mono font-medium">
+                                                        {bkg.boxes || '-'}
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide ${bkg.status === BOOKING_STATUS.BOOKED ? 'bg-blue-50 border-blue-100 text-blue-700' :
+                                                            bkg.status === BOOKING_STATUS.PENDING ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                                                                bkg.status === BOOKING_STATUS.RECEIVED ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                                                                    bkg.status === BOOKING_STATUS.REJECTED ? 'bg-rose-50 border-rose-100 text-rose-700' :
+                                                                        bkg.status === BOOKING_STATUS.DELAYED ? 'bg-rose-50 border-rose-100 text-rose-700' :
+                                                                            bkg.status === BOOKING_STATUS.CANCELLED ? 'bg-gray-100 border-gray-200 text-gray-500 line-through' :
+                                                                                'bg-slate-50 border-slate-100 text-slate-700'
+                                                            }`}>
+                                                            {bkg.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <div className="flex justify-center gap-1">
+                                                            {bkg.documents?.coa && <span title="COA" className="w-5 h-5 rounded bg-emerald-100 text-emerald-600 text-[10px] font-bold flex items-center justify-center cursor-help">C</span>}
+                                                            {bkg.documents?.invoice && <span title="Invoice" className="w-5 h-5 rounded bg-blue-100 text-blue-600 text-[10px] font-bold flex items-center justify-center cursor-help">I</span>}
+                                                            {bkg.documents?.lr && <span title="LR" className="w-5 h-5 rounded bg-purple-100 text-purple-600 text-[10px] font-bold flex items-center justify-center cursor-help">L</span>}
+                                                        </div>
+                                                    </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex justify-end gap-2">
-                                                            {bkg.status !== 'Cancelled' && bkg.status !== 'Completed' && (
+                                                            {bkg.status !== BOOKING_STATUS.CANCELLED && bkg.status !== BOOKING_STATUS.REJECTED && (
                                                                 <>
-                                                                    <button
-                                                                        onClick={() => handleMarkDelayed(bkg)}
-                                                                        className={`text-xs font-medium hover:underline ${bkg.status === 'Delayed' ? 'text-emerald-600' : 'text-rose-600'}`}
-                                                                    >
-                                                                        {bkg.status === 'Delayed' ? 'Mark On-Time' : 'Report Delay'}
-                                                                    </button>
-
                                                                     <button
                                                                         onClick={() => handleCancel(bkg)}
                                                                         className="text-xs text-slate-400 hover:text-slate-600 font-medium hover:underline border-l pl-2 border-gray-300"
@@ -363,14 +365,15 @@ const BookingPortal = () => {
                                                                     </button>
                                                                 </>
                                                             )}
-                                                            {bkg.status === 'Cancelled' && <span className="text-xs text-slate-400 italic">Cancelled</span>}
+                                                            {(bkg.status === BOOKING_STATUS.CANCELLED || bkg.status === BOOKING_STATUS.REJECTED) && <span className="text-xs text-slate-400 italic">{bkg.status === BOOKING_STATUS.CANCELLED ? 'Cancelled' : 'Rejected'}</span>}
+
                                                         </div>
                                                     </td>
                                                 </tr>
                                             ))}
                                         {myBookings.length === 0 && (
                                             <tr>
-                                                <td colSpan="6" className="p-12 text-center text-slate-400">
+                                                <td colSpan="8" className="p-12 text-center text-slate-400">
                                                     <div className="text-4xl mb-4">🚛</div>
                                                     <h3 className="text-lg font-medium text-slate-900">No shipments found</h3>
                                                     <button onClick={() => setViewMode('new-booking')} className="mt-4 text-indigo-600 font-bold text-sm hover:underline">

@@ -9,6 +9,7 @@ import SlotGrid from './components/SlotGrid';
 
 import ScheduleUpload from './components/ScheduleUpload';
 import LiveOperations from './components/LiveOperations';
+import WarehouseOps from './components/WarehouseOps';
 
 // Helper to determine default path based on role
 const getDefaultPath = (role) => {
@@ -66,6 +67,11 @@ function App() {
               <Route path="/upload-schedule" element={
                 <ProtectedRoute allowedRoles={['admin', 'warehouse_employee']}>
                   <ScheduleUpload />
+                </ProtectedRoute>
+              } />
+              <Route path="/warehouse-ops" element={
+                <ProtectedRoute allowedRoles={['admin', 'warehouse_employee']}>
+                  <WarehouseOps />
                 </ProtectedRoute>
               } />
 
