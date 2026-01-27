@@ -141,8 +141,23 @@ const Layout = ({ children }) => {
                     </div>
                 </aside>
 
+                {/* Mobile Bottom Navigation */}
+                <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-50 flex justify-between items-center px-6 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] text-xs font-medium text-slate-500 pb-safe">
+                    {navItems.map((page) => (
+                        <button
+                            key={page.name}
+                            onClick={() => navigate(page.path)}
+                            className={`flex flex-col items-center gap-1 transition-colors ${isActive(page.path) ? 'text-indigo-600' : 'hover:text-slate-800'}`}
+                        >
+                            <span className={`text-xl ${isActive(page.path) ? 'scale-110' : ''} transition-transform`}>{page.icon}</span>
+                            <span>{page.name.split(' ')[0]}</span>
+                        </button>
+                    ))}
+                    {/* Role Switcher in Mobile Nav? Or keep in header. Header is fine for switcher. */}
+                </nav>
+
                 {/* Content Wrapper */}
-                <div className="flex-1 md:ml-16 transition-all duration-300 min-w-0">
+                <div className="flex-1 md:ml-16 transition-all duration-300 min-w-0 mb-16 md:mb-0">
                     <main className="p-4 sm:p-6 w-full max-w-full">
                         <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden">
                             <div className="absolute top-0 right-0 w-[50%] h-[50%] rounded-full bg-indigo-50/40 blur-[120px]" />

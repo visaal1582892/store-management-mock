@@ -9,7 +9,8 @@ export const VENDORS = [
     { name: "Alpha Pharma", id: "VND-1001" },
     { name: "Beta Logistics", id: "VND-1002" },
     { name: "Gamma Supply", id: "VND-1003" },
-    { name: "Delta Meds", id: "VND-1004" }
+    { name: "Delta Meds", id: "VND-1004" },
+    { name: "Vendor Partner", id: "VND-PARTNER" } // Current User
 ];
 
 export const ITEMS = ["Paracetamol Bulk", "Syringes", "Antibiotics", "Saline Bottles", "Cotton Bales"];
@@ -38,7 +39,7 @@ export const DEMO_SCENARIO = [
     {
         slotTime: '13:00 - 16:00',
         status: 'Booked',
-        vendorId: 'VND-1003', // Gamma Supply
+        vendorId: 'VND-PARTNER', // Vendor Partner (Active Demo)
         item: "Cotton Bales",
         boxes: 120,
         contact: "9123456780",

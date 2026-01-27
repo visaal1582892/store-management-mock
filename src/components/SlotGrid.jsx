@@ -6,6 +6,7 @@ import { formatDateYYYYMMDD } from '../utils/dateUtils';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { BOOKING_STATUS } from '../utils/constants';
+import DocumentViewerModal from './DocumentViewerModal';
 
 const ScheduleModal = ({ isOpen, onClose, initialDate, warehouseId, slots, onSave, onDelete, blockedDates = [], isEditing = false }) => {
     const [selectedDate, setSelectedDate] = useState(initialDate);
@@ -185,6 +186,8 @@ const ScheduleModal = ({ isOpen, onClose, initialDate, warehouseId, slots, onSav
 };
 
 const BookingDetailsModal = ({ isOpen, onClose, data }) => {
+    const [viewingDoc, setViewingDoc] = useState(null);
+
     if (!isOpen || !data) return null;
 
     const { warehouseName, date, bookings } = data;
@@ -214,19 +217,44 @@ const BookingDetailsModal = ({ isOpen, onClose, data }) => {
                                     <th className="px-4 py-3">Time Slot</th>
                                     <th className="px-4 py-3">Vendor</th>
                                     <th className="px-4 py-3">Vehicle</th>
-                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3 text-center">Documents</th>
+                                    <th className="px-4 py-3 text-center">Schedule Status</th>
+                                    <th className="px-4 py-3">Booking Status</th>
                                     <th className="px-4 py-3 text-right">Boxes</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {bookings.sort((a, b) => a.slot.localeCompare(b.slot)).map(b => (
-                                    <tr key={b.id} className="hover:bg-slate-50">
+                                    <tr key={b.id} className="hover:bg-indigo-50/50 transition-colors even:bg-slate-50/50">
                                         <td className="px-4 py-3 font-mono text-xs">{b.slot}</td>
                                         <td className="px-4 py-3">
                                             <div className="font-medium text-slate-900">{b.vendorName}</div>
                                             <div className="text-[10px] text-slate-400">{b.vendorId}</div>
                                         </td>
                                         <td className="px-4 py-3 font-mono text-xs">{b.vehicleNumber}</td>
+                                        <td className="px-4 py-3 text-center">
+                                            <button
+                                                onClick={() => setViewingDoc(b)}
+                                                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center justify-center gap-1 mx-auto"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                </svg>
+                                                View Docs
+                                            </button>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            {b.scheduleStatus === 'On time' ? (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800">
+                                                    On time
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-800 animate-pulse whitespace-nowrap">
+                                                    {b.scheduleStatus}
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide
                                                 ${b.status === 'Booked' ? 'bg-blue-50 text-blue-700 border-blue-200' :
@@ -252,6 +280,12 @@ const BookingDetailsModal = ({ isOpen, onClose, data }) => {
                     </button>
                 </div>
             </div>
+
+            <DocumentViewerModal
+                isOpen={!!viewingDoc}
+                onClose={() => setViewingDoc(null)}
+                booking={viewingDoc}
+            />
         </div>
     );
 };

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { formatDateYYYYMMDD } from '../utils/dateUtils';
+import DocumentViewerModal from './DocumentViewerModal';
 
 const LiveOperations = () => {
     const { user } = useAuth();
@@ -13,11 +14,13 @@ const LiveOperations = () => {
     // Date Range State
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
+    const [viewingDoc, setViewingDoc] = useState(null);
 
     // Filters
     const [filters, setFilters] = useState({
         vendor: '',
-        vehicle: ''
+        vehicle: '',
+        schedStatus: ''
     });
 
     // Detailed Vendor Modal
@@ -46,8 +49,9 @@ const LiveOperations = () => {
         // Other Filters
         const vendorMatch = !filters.vendor || b.vendorName.toLowerCase().includes(filters.vendor.toLowerCase()) || b.vendorId.toLowerCase().includes(filters.vendor.toLowerCase());
         const vehicleMatch = !filters.vehicle || b.vehicleNumber.toLowerCase().includes(filters.vehicle.toLowerCase());
+        const schedMatch = !filters.schedStatus || (b.scheduleStatus && b.scheduleStatus === filters.schedStatus);
 
-        return dateMatch && vendorMatch && vehicleMatch;
+        return dateMatch && vendorMatch && vehicleMatch && schedMatch;
         // Sort by Date then Time
     }).sort((a, b) => {
         const dateA = new Date(`${a.date}T${a.slot.split(' - ')[0]}`);
@@ -58,7 +62,7 @@ const LiveOperations = () => {
     const clearFilters = () => {
         setStartDate(null);
         setEndDate(null);
-        setFilters({ vendor: '', vehicle: '' });
+        setFilters({ vendor: '', vehicle: '', schedStatus: '' });
     };
 
     return (
@@ -105,6 +109,8 @@ const LiveOperations = () => {
                                 <th className="px-6 py-4 w-48 bg-gray-50">Date & Time</th>
                                 <th className="px-6 py-4 bg-gray-50">Vendor Name</th>
                                 <th className="px-6 py-4 bg-gray-50">Vehicle No</th>
+                                <th className="px-6 py-4 bg-gray-50 text-center">Documents</th>
+                                <th className="px-6 py-4 bg-gray-50 text-center">Schedule Status</th>
                                 <th className="px-6 py-4 bg-gray-50 text-center">Entry Date & Time</th>
                                 <th className="px-6 py-4 bg-gray-50 text-center">Exit Date & Time</th>
                                 <th className="px-6 py-4 bg-gray-50 text-right">Actions</th>
@@ -131,6 +137,18 @@ const LiveOperations = () => {
                                         onChange={e => setFilters({ ...filters, vehicle: e.target.value })}
                                     />
                                 </th>
+                                <th className="px-6 py-2">
+                                    <select
+                                        className="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-1.5"
+                                        value={filters.schedStatus}
+                                        onChange={e => setFilters({ ...filters, schedStatus: e.target.value })}
+                                    >
+                                        <option value="">All</option>
+                                        <option value="On time">On time</option>
+                                        <option value="Entry delayed">Entry delayed</option>
+                                        <option value="Exit delayed">Exit delayed</option>
+                                    </select>
+                                </th>
                                 <th className="px-6 py-2"></th>
                                 <th className="px-6 py-2"></th>
                                 <th className="px-6 py-2"></th>
@@ -138,7 +156,7 @@ const LiveOperations = () => {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredBookings.map((booking) => (
-                                <tr key={booking.id} className="hover:bg-indigo-50/30 transition-colors group">
+                                <tr key={booking.id} className="hover:bg-indigo-50/50 transition-colors group even:bg-slate-50/50 border-b border-gray-100 last:border-0">
                                     {/* Date & Time */}
                                     <td className="px-6 py-4 bg-white border-r border-gray-50 align-top">
                                         <div className="font-bold text-slate-900">{booking.date}</div>
@@ -158,12 +176,36 @@ const LiveOperations = () => {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                             </svg>
                                         </button>
-                                        <div className="text-[10px] text-slate-400 mt-0.5">{booking.vendorId}</div>
                                     </td>
 
                                     {/* Vehicle No */}
                                     <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-700">
                                         {booking.vehicleNumber}
+                                    </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <button
+                                            onClick={() => setViewingDoc(booking)}
+                                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center justify-center gap-1 mx-auto"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            View Docs
+                                        </button>
+                                    </td>
+
+                                    {/* Schedule Status */}
+                                    <td className="px-6 py-4 text-center">
+                                        {booking.scheduleStatus === 'On time' ? (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                                                On time
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800 animate-pulse">
+                                                {booking.scheduleStatus}
+                                            </span>
+                                        )}
                                     </td>
 
                                     {/* Entry Date & Time */}
@@ -197,17 +239,43 @@ const LiveOperations = () => {
                                     {/* Actions */}
                                     <td className="px-6 py-4 text-right">
                                         {!booking.entryTime && (
-                                            <button
-                                                onClick={() => markVehicleEntered(booking.id)}
-                                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-sm transition-all"
-                                            >
-                                                Vehicle Entered
-                                            </button>
+                                            (() => {
+                                                const [startStr] = booking.slot.split(' - ');
+                                                // Create Date object for slot start
+                                                const slotStart = new Date(`${booking.date}T${startStr}:00`);
+                                                const now = new Date();
+                                                // 30 mins before start
+                                                const allowEntryTime = new Date(slotStart);
+                                                allowEntryTime.setMinutes(allowEntryTime.getMinutes() - 30);
+
+                                                const isTooEarly = now < allowEntryTime;
+
+                                                return (
+                                                    <div className="relative group/btn inline-block">
+                                                        <button
+                                                            onClick={() => markVehicleEntered(booking.id)}
+                                                            disabled={isTooEarly}
+                                                            className={`px-3 py-1.5 rounded text-xs font-bold shadow-sm transition-all
+                                                                ${isTooEarly
+                                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white hover:shadow-emerald-200 hover:-translate-y-0.5'
+                                                                }`}
+                                                        >
+                                                            Vehicle Entered
+                                                        </button>
+                                                        {isTooEarly && (
+                                                            <div className="absolute bottom-full right-0 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded shadow-lg opacity-0 group-hover/btn:opacity-100 transition-opacity z-10 pointer-events-none text-center">
+                                                                Entry allowed from {allowEntryTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()
                                         )}
                                         {booking.entryTime && !booking.exitTime && (
                                             <button
                                                 onClick={() => markVehicleLeft(booking.id)}
-                                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-bold shadow-sm transition-all"
+                                                className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-bold shadow-sm transition-all hover:shadow-rose-200 hover:-translate-y-0.5"
                                             >
                                                 Vehicle Exited
                                             </button>
@@ -236,6 +304,13 @@ const LiveOperations = () => {
                     )}
                 </div>
             </div>
+
+            {/* Document Viewer Modal */}
+            <DocumentViewerModal
+                isOpen={!!viewingDoc}
+                onClose={() => setViewingDoc(null)}
+                booking={viewingDoc}
+            />
 
             {/* Vendor Details Modal */}
             {
@@ -270,12 +345,12 @@ const LiveOperations = () => {
 
                                 <div className="grid grid-cols-1 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                     <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contact Number</label>
+                                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Driver Contact Number</label>
                                         <div className="text-sm font-semibold text-slate-800 flex items-center gap-2">
                                             <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                             </svg>
-                                            {selectedBooking.contact || '+91 98765 43210'}
+                                            {selectedBooking.driverContact || selectedBooking.contact || 'N/A'}
                                         </div>
                                     </div>
                                     <div className="space-y-1">

@@ -1,5 +1,5 @@
 import { getAllWarehouses } from '../data/warehouses';
-import { formatDateYYYYMMDD } from '../utils/dateUtils';
+import { formatDateYYYYMMDD, calculateScheduleStatus } from '../utils/dateUtils';
 import { BOOKING_STATUS } from '../utils/constants';
 import { VENDORS, DRIVERS, ITEMS, DEMO_SCENARIO, DEMO_WAREHOUSE_ID } from '../data/mockDb';
 
@@ -20,6 +20,8 @@ export const generateInitialData = () => {
         d.setHours(parseInt(hours), parseInt(minutes), 0, 0);
         return d.toISOString();
     };
+
+
 
     warehouses.forEach(wh => {
         slots[wh.id] = {};
@@ -76,6 +78,9 @@ export const generateInitialData = () => {
                     if (useDemoScenario && demoSlotData) {
                         // Use Static Demo Data
                         const vendorObj = VENDORS.find(v => v.id === demoSlotData.vendorId);
+                        const entryIso = toIsoForToday(demoSlotData.entryTime);
+                        const exitIso = toIsoForToday(demoSlotData.exitTime);
+
                         booking = {
                             id: bookingId,
                             warehouseId: wh.id,
@@ -97,14 +102,26 @@ export const generateInitialData = () => {
                             // Live Ops Fields - from DB
                             vehicleNumber: demoSlotData.vehicleNo,
                             contact: demoSlotData.contact,
+                            driverContact: '9848012345',
                             unloadingStatus: demoSlotData.unloadingStatus,
-                            entryTime: toIsoForToday(demoSlotData.entryTime),
-                            exitTime: toIsoForToday(demoSlotData.exitTime)
+                            entryTime: entryIso,
+                            exitTime: exitIso,
+                            scheduleStatus: calculateScheduleStatus(dateString, time, entryIso, exitIso)
                         };
                     } else {
                         // Random Data
                         const vendor = VENDORS[Math.floor(Math.random() * VENDORS.length)];
                         const driver = DRIVERS[Math.floor(Math.random() * DRIVERS.length)];
+
+                        // Parse Slot Start/End for randomized times
+                        const [startHour, startMin] = time.split(' - ')[0].split(':').map(Number);
+                        const [endHour, endMin] = time.split(' - ')[1].split(':').map(Number);
+
+                        const slotStart = new Date(date);
+                        slotStart.setHours(startHour, startMin, 0, 0);
+
+                        const slotEnd = new Date(date);
+                        slotEnd.setHours(endHour, endMin, 0, 0);
 
                         booking = {
                             id: bookingId,
@@ -118,12 +135,13 @@ export const generateInitialData = () => {
                             // Randomize status for variety in 'All Bookings'
                             status: (() => {
                                 const rand = Math.random();
-                                if (rand < 0.4) return BOOKING_STATUS.PENDING; // 40% Pending
-                                if (rand < 0.8) return BOOKING_STATUS.BOOKED;  // 40% Booked
-                                return BOOKING_STATUS.REJECTED; // 20% Rejected
+                                if (rand < 0.3) return BOOKING_STATUS.PENDING;
+                                if (rand < 0.6) return BOOKING_STATUS.BOOKED;
+                                if (rand < 0.8) return BOOKING_STATUS.VEHICLE_REACHED;
+                                return BOOKING_STATUS.VEHICLE_LEFT;
                             })(),
                             items: ITEMS[Math.floor(Math.random() * ITEMS.length)],
-                            boxes: Math.floor(50 + Math.random() * 450), // Random boxes 50-500
+                            boxes: Math.floor(50 + Math.random() * 450),
                             documents: { coa: true, invoice: true, lr: true },
                             dropItems: [wh.id],
                             inTime: null,
@@ -133,10 +151,51 @@ export const generateInitialData = () => {
                             // Live Ops Fields - Default/Random
                             vehicleNumber: generateVehicleNo(),
                             contact: driver.contact,
+                            driverContact: driver.contact,
                             unloadingStatus: 'Pending',
                             entryTime: null,
-                            exitTime: null
+                            exitTime: null,
+                            scheduleStatus: 'On time'
                         };
+
+                        // If status implies activity, generate times that might be delayed
+                        if ([BOOKING_STATUS.VEHICLE_REACHED, BOOKING_STATUS.VEHICLE_LEFT].includes(booking.status)) {
+                            // 30% chance of being late
+                            const isLateEntry = Math.random() < 0.3;
+                            const entryDelayMinutes = isLateEntry ? Math.floor(35 + Math.random() * 60) : Math.floor(Math.random() * 20); // Late > 30m, else < 20m
+
+                            const actualEntryTime = new Date(slotStart);
+                            actualEntryTime.setMinutes(actualEntryTime.getMinutes() + entryDelayMinutes);
+                            booking.entryTime = actualEntryTime.toISOString();
+                            booking.inTime = actualEntryTime.toISOString(); // Legacy field sync
+
+                            if (booking.status === BOOKING_STATUS.VEHICLE_LEFT) {
+                                const isLateExit = Math.random() < 0.3;
+                                const durationMinutes = 60 + Math.random() * 60; // 1-2 hours duration
+
+                                // To force exit delay, we can push it past slotEnd + 30
+                                let actualExitTime = new Date(actualEntryTime);
+                                actualExitTime.setMinutes(actualExitTime.getMinutes() + durationMinutes);
+
+                                if (isLateExit) {
+                                    // Ensure it's late compared to slotEnd
+                                    const minExitForDelay = new Date(slotEnd);
+                                    minExitForDelay.setMinutes(minExitForDelay.getMinutes() + 35);
+                                    if (actualExitTime < minExitForDelay) {
+                                        actualExitTime = minExitForDelay;
+                                    }
+                                }
+
+                                booking.exitTime = actualExitTime.toISOString();
+                                booking.outTime = actualExitTime.toISOString(); // Legacy
+                                booking.unloadingStatus = 'Completed';
+                            } else {
+                                booking.unloadingStatus = 'In-Progress';
+                            }
+
+                            // Recalculate status based on these generated times
+                            booking.scheduleStatus = calculateScheduleStatus(dateString, time, booking.entryTime, booking.exitTime);
+                        }
                     }
 
                     bookings.push(booking);

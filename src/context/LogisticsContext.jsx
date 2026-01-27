@@ -2,6 +2,7 @@ import { createContext, useState, useContext } from 'react';
 import { generateInitialData } from './initialData';
 import { getAllWarehouses } from '../data/warehouses';
 import { BOOKING_STATUS } from '../utils/constants';
+import { calculateScheduleStatus } from '../utils/dateUtils';
 
 const LogisticsContext = createContext
     ();
@@ -124,13 +125,26 @@ export const LogisticsProvider = ({ children }) => {
     const markVehicleEntered = (bookingId) => {
         setBookings(prev => prev.map(b => {
             if (b.id === bookingId) {
-                const now = new Date();
+                // SIMULATED TIME LOGIC:
+                // Instead of "now", we set it to Slot Start Time + Random (5-20 mins)
+                // This mimics a realistic "On Time" or slightly "Late" arrival relative to the slot.
+                // NOTE: If you want to force a DELAY, we can tweak this logic or user manual override.
+                // For this mock, let's assume "Action clicked" = "Vehicle arrived reasonably near slot start".
+
+                const [startStr] = b.slot.split(' - ');
+                const simulatedEntry = new Date(`${b.date}T${startStr}:00`);
+                // Random delay 5 to 25 minutes
+                simulatedEntry.setMinutes(simulatedEntry.getMinutes() + 5 + Math.floor(Math.random() * 20));
+
+                const entryIso = simulatedEntry.toISOString();
+
                 return {
                     ...b,
                     status: BOOKING_STATUS.VEHICLE_REACHED,
-                    entryTime: now.toISOString(), // Store full ISO string
+                    entryTime: entryIso,
                     unloadingStatus: 'In-Progress',
-                    history: [...b.history, { status: BOOKING_STATUS.VEHICLE_REACHED, timestamp: now.toISOString() }]
+                    history: [...b.history, { status: BOOKING_STATUS.VEHICLE_REACHED, timestamp: new Date().toISOString() }], // History timestamp is actual action time
+                    scheduleStatus: calculateScheduleStatus(b.date, b.slot, entryIso, b.exitTime)
                 };
             }
             return b;
@@ -140,13 +154,22 @@ export const LogisticsProvider = ({ children }) => {
     const markVehicleLeft = (bookingId) => {
         setBookings(prev => prev.map(b => {
             if (b.id === bookingId) {
-                const now = new Date();
+                // SIMULATED TIME LOGIC:
+                // Exit time = Entry Time + Random (45 - 90 mins) processing time
+                const entryDate = b.entryTime ? new Date(b.entryTime) : new Date(); // Fallback if no entry (shouldn't happen)
+
+                const simulatedExit = new Date(entryDate);
+                simulatedExit.setMinutes(simulatedExit.getMinutes() + 45 + Math.floor(Math.random() * 45));
+
+                const exitIso = simulatedExit.toISOString();
+
                 return {
                     ...b,
                     status: BOOKING_STATUS.VEHICLE_LEFT,
-                    exitTime: now.toISOString(), // Store full ISO string
+                    exitTime: exitIso,
                     unloadingStatus: 'Completed',
-                    history: [...b.history, { status: BOOKING_STATUS.VEHICLE_LEFT, timestamp: now.toISOString() }]
+                    history: [...b.history, { status: BOOKING_STATUS.VEHICLE_LEFT, timestamp: new Date().toISOString() }],
+                    scheduleStatus: calculateScheduleStatus(b.date, b.slot, b.entryTime, exitIso)
                 };
             }
             return b;

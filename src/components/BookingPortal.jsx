@@ -2,15 +2,17 @@ import React, { useState, useMemo } from 'react';
 import { useLogistics } from '../context/LogisticsContext';
 import { useAuth } from '../context/AuthContext';
 import { BOOKING_STATUS } from '../utils/constants';
+import DocumentViewerModal from './DocumentViewerModal';
 
 const BookingPortal = () => {
     const { warehouses, slots, bookings, addBooking, cancelBooking } = useLogistics();
     const { user } = useAuth();
 
-    // View State: 'new-booking' or 'my-bookings'
+    // View State
     const [viewMode, setViewMode] = useState('new-booking');
+    const [viewingDoc, setViewingDoc] = useState(null);
 
-    // Form Statethe
+    // Form State
     const [selectedState, setSelectedState] = useState('');
     const [warehouseId, setWarehouseId] = useState('');
     const [selectedDate, setSelectedDate] = useState('');
@@ -18,8 +20,9 @@ const BookingPortal = () => {
 
     const [items, setItems] = useState('');
     const [vehicleNumber, setVehicleNumber] = useState('');
+    const [driverContact, setDriverContact] = useState('');
     const [boxes, setBoxes] = useState('');
-    const [documents, setDocuments] = useState({ coa: false, invoice: false, lr: false });
+    const [documents, setDocuments] = useState({ coa: null, invoice: null, lr: null });
 
     // Filter State
     const [filters, setFilters] = useState({
@@ -27,9 +30,9 @@ const BookingPortal = () => {
         status: '',
         warehouse: '',
         date: '',
-        items: ''
+        items: '',
+        schedStatus: ''
     });
-
 
     // Derived State
     const states = useMemo(() => [...new Set(warehouses.map(w => w.state))].sort(), [warehouses]);
@@ -46,8 +49,7 @@ const BookingPortal = () => {
     const handleBookingSubmit = (e) => {
         e.preventDefault();
         try {
-            if (!documents.coa || !documents.invoice || !documents.lr) throw new Error("Documents mandatory");
-
+            if (!documents.coa || !documents.invoice) throw new Error("COA and Invoice are mandatory");
 
             addBooking({
                 vendorName: user.name,
@@ -56,24 +58,24 @@ const BookingPortal = () => {
                 slotTime: selectedSlot,
                 items,
                 vehicleNumber,
+                driverContact,
                 documents
             });
             // Reset and switch view
             setViewMode('my-bookings');
-            // Reset Form excluding State (UX preference) or reset all? Resetting all for clean state.
+            // Reset Form
             setWarehouseId('');
             setSelectedDate('');
             setSelectedSlot('');
-            setDocuments({ coa: false, invoice: false, lr: false });
+            setDocuments({ coa: null, invoice: null, lr: null });
             setItems('');
             setVehicleNumber('');
+            setDriverContact('');
             setBoxes('');
         } catch (err) {
             alert(err.message);
         }
     };
-
-
 
     const handleCancel = (booking) => {
         if (window.confirm(`Are you sure you want to CANCEL booking ${booking.id}?`)) {
@@ -82,7 +84,7 @@ const BookingPortal = () => {
     };
 
     // My Bookings Data
-    const myBookings = bookings.filter(b => b.vendorName === user.name || user.role === 'admin'); // Admin sees all for demo
+    const myBookings = bookings.filter(b => b.vendorName === user.name || user.role === 'admin');
 
     return (
         <div className="space-y-6">
@@ -117,7 +119,7 @@ const BookingPortal = () => {
                 </nav>
             </div>
 
-            {/* Main Content Area - Centered & Flexible */}
+            {/* Main Content Area */}
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 max-w-5xl mx-auto">
                 {viewMode === 'new-booking' ? (
                     <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm relative overflow-hidden">
@@ -135,7 +137,7 @@ const BookingPortal = () => {
                                         value={selectedState}
                                         onChange={(e) => {
                                             setSelectedState(e.target.value);
-                                            setWarehouseId(''); // Reset warehouse when state changes
+                                            setWarehouseId('');
                                             setSelectedDate('');
                                         }}
                                         className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none transition-shadow"
@@ -205,6 +207,10 @@ const BookingPortal = () => {
                             {/* Details Section */}
                             <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 ${!selectedDate ? 'opacity-50 pointer-events-none' : ''}`}>
                                 <div>
+                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Driver Contact Number</label>
+                                    <input type="tel" value={driverContact} onChange={e => setDriverContact(e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none" placeholder="10-digit mobile" required disabled={!selectedDate} />
+                                </div>
+                                <div>
                                     <label className="block text-sm font-semibold text-slate-700 mb-2">Vehicle Number</label>
                                     <input type="text" value={vehicleNumber} onChange={e => setVehicleNumber(e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:outline-none" placeholder="XX-00-XX-0000" required disabled={!selectedDate} />
                                 </div>
@@ -219,21 +225,101 @@ const BookingPortal = () => {
                             </div>
 
                             <div className={`bg-gray-50 p-6 rounded-lg border border-gray-200 ${!selectedDate ? 'opacity-50 pointer-events-none' : ''}`}>
-                                <label className="block text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Mandatory Attachments</label>
-                                <div className="flex gap-4">
-                                    {['coa', 'invoice', 'lr'].map(doc => (
-                                        <label key={doc} className={`flex items-center gap-2 px-4 py-3 rounded-lg cursor-pointer border transition-all ${documents[doc] ? 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm' : 'bg-white border-gray-200 text-slate-500 hover:border-gray-400'}`}>
-                                            <input type="checkbox" checked={documents[doc]} onChange={e => setDocuments({ ...documents, [doc]: e.target.checked })} className="hidden" disabled={!selectedDate} />
-                                            <span className="text-xs uppercase font-bold">{documents[doc] ? '✓' : '+'} {doc}</span>
-                                        </label>
-                                    ))}
+                                <label className="block text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wider">Shipment Documents</label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* COA - Mandatory */}
+                                    <div className="relative group">
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">COA (Mandatory)</label>
+                                        <div className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-colors ${documents.coa ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 hover:border-indigo-400 bg-white'}`}>
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.jpg,.png"
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                onChange={e => setDocuments({ ...documents, coa: e.target.files[0] })}
+                                                disabled={!selectedDate}
+                                            />
+                                            {documents.coa ? (
+                                                <div className="flex flex-col items-center text-emerald-700">
+                                                    <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    <span className="text-[10px] font-bold truncate max-w-full px-2">{documents.coa.name}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center text-slate-400">
+                                                    <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                    </svg>
+                                                    <span className="text-[10px]">Upload PDF/IMG</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Invoice - Mandatory */}
+                                    <div className="relative group">
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">Invoice (Mandatory)</label>
+                                        <div className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-colors ${documents.invoice ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 hover:border-indigo-400 bg-white'}`}>
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.jpg,.png"
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                onChange={e => setDocuments({ ...documents, invoice: e.target.files[0] })}
+                                                disabled={!selectedDate}
+                                            />
+                                            {documents.invoice ? (
+                                                <div className="flex flex-col items-center text-emerald-700">
+                                                    <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    <span className="text-[10px] font-bold truncate max-w-full px-2">{documents.invoice.name}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center text-slate-400">
+                                                    <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                    </svg>
+                                                    <span className="text-[10px]">Upload PDF/IMG</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* LR - Optional */}
+                                    <div className="relative group">
+                                        <label className="block text-xs font-bold text-slate-700 mb-1">LR Copy (Optional)</label>
+                                        <div className={`relative border-2 border-dashed rounded-lg p-4 text-center transition-colors ${documents.lr ? 'border-emerald-300 bg-emerald-50' : 'border-gray-300 hover:border-indigo-400 bg-white'}`}>
+                                            <input
+                                                type="file"
+                                                accept=".pdf,.jpg,.png"
+                                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                                onChange={e => setDocuments({ ...documents, lr: e.target.files[0] })}
+                                                disabled={!selectedDate}
+                                            />
+                                            {documents.lr ? (
+                                                <div className="flex flex-col items-center text-emerald-700">
+                                                    <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    <span className="text-[10px] font-bold truncate max-w-full px-2">{documents.lr.name}</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center text-slate-400">
+                                                    <svg className="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                    </svg>
+                                                    <span className="text-[10px]">Optional</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             <button
                                 type="submit"
-                                className={`w-full font-bold py-3.5 rounded-lg shadow-md transition-all ${!selectedDate || !selectedSlot || !documents.coa || !documents.invoice || !documents.lr ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20 active:scale-[0.99]'}`}
-                                disabled={!selectedDate || !selectedSlot || !documents.coa || !documents.invoice || !documents.lr}
+                                className={`w-full font-bold py-3.5 rounded-lg shadow-md transition-all ${!selectedDate || !selectedSlot || !documents.coa || !documents.invoice ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none' : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20 active:scale-[0.99]'}`}
+                                disabled={!selectedDate || !selectedSlot || !documents.coa || !documents.invoice}
                             >
                                 Confirm Booking
                             </button>
@@ -252,6 +338,7 @@ const BookingPortal = () => {
                                             <th className="px-6 py-4">Vehicle No</th>
                                             <th className="px-6 py-4">Product</th>
                                             <th className="px-6 py-4 text-center">Boxes</th>
+                                            <th className="px-6 py-4 text-center">Schedule Status</th>
                                             <th className="px-6 py-4">Status</th>
                                             <th className="px-6 py-4 text-center">Documents</th>
                                             <th className="px-6 py-4 text-right">Actions</th>
@@ -293,6 +380,17 @@ const BookingPortal = () => {
                                             <th className="px-6 py-2">
                                                 <select
                                                     className="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-1.5"
+                                                    onChange={e => setFilters({ ...filters, schedStatus: e.target.value })}
+                                                >
+                                                    <option value="">All</option>
+                                                    <option value="On time">On time</option>
+                                                    <option value="Entry delayed">Entry delayed</option>
+                                                    <option value="Exit delayed">Exit delayed</option>
+                                                </select>
+                                            </th>
+                                            <th className="px-6 py-2">
+                                                <select
+                                                    className="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-1.5"
                                                     onChange={e => setFilters({ ...filters, status: e.target.value })}
                                                 >
                                                     <option value="">All</option>
@@ -311,10 +409,11 @@ const BookingPortal = () => {
                                                 const matchWarehouse = !filters.warehouse || warehouses.find(w => w.id === b.warehouseId)?.name.toLowerCase().includes(filters.warehouse.toLowerCase());
                                                 const matchDate = !filters.date || b.date === filters.date;
                                                 const matchItems = !filters.items || b.items.toLowerCase().includes(filters.items.toLowerCase());
-                                                return matchVehicle && matchStatus && matchWarehouse && matchDate && matchItems;
+                                                const matchSched = !filters.schedStatus || (b.scheduleStatus && b.scheduleStatus === filters.schedStatus);
+                                                return matchVehicle && matchStatus && matchWarehouse && matchDate && matchItems && matchSched;
                                             })
                                             .map(bkg => (
-                                                <tr key={bkg.id} className="hover:bg-gray-50 transition-colors">
+                                                <tr key={bkg.id} className="hover:bg-indigo-50/50 transition-colors even:bg-slate-50/50 border-b border-gray-100 last:border-0">
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col">
                                                             <span className="tabular-nums">{new Date(bkg.date).toLocaleDateString()}</span>
@@ -334,6 +433,17 @@ const BookingPortal = () => {
                                                     <td className="px-6 py-4 text-center font-mono font-medium">
                                                         {bkg.boxes || '-'}
                                                     </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        {bkg.scheduleStatus === 'On time' ? (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800">
+                                                                On time
+                                                            </span>
+                                                        ) : (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-rose-100 text-rose-800 animate-pulse whitespace-nowrap">
+                                                                {bkg.scheduleStatus}
+                                                            </span>
+                                                        )}
+                                                    </td>
                                                     <td className="px-6 py-4">
                                                         <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide ${bkg.status === BOOKING_STATUS.BOOKED ? 'bg-blue-50 border-blue-100 text-blue-700' :
                                                             bkg.status === BOOKING_STATUS.PENDING ? 'bg-amber-50 border-amber-100 text-amber-700' :
@@ -347,11 +457,16 @@ const BookingPortal = () => {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
-                                                        <div className="flex justify-center gap-1">
-                                                            {bkg.documents?.coa && <span title="COA" className="w-5 h-5 rounded bg-emerald-100 text-emerald-600 text-[10px] font-bold flex items-center justify-center cursor-help">C</span>}
-                                                            {bkg.documents?.invoice && <span title="Invoice" className="w-5 h-5 rounded bg-blue-100 text-blue-600 text-[10px] font-bold flex items-center justify-center cursor-help">I</span>}
-                                                            {bkg.documents?.lr && <span title="LR" className="w-5 h-5 rounded bg-purple-100 text-purple-600 text-[10px] font-bold flex items-center justify-center cursor-help">L</span>}
-                                                        </div>
+                                                        <button
+                                                            onClick={() => setViewingDoc(bkg)}
+                                                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center justify-center gap-1 mx-auto"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                            </svg>
+                                                            View Docs
+                                                        </button>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex justify-end gap-2">
@@ -373,7 +488,7 @@ const BookingPortal = () => {
                                             ))}
                                         {myBookings.length === 0 && (
                                             <tr>
-                                                <td colSpan="8" className="p-12 text-center text-slate-400">
+                                                <td colSpan="9" className="p-12 text-center text-slate-400">
                                                     <div className="text-4xl mb-4">🚛</div>
                                                     <h3 className="text-lg font-medium text-slate-900">No shipments found</h3>
                                                     <button onClick={() => setViewMode('new-booking')} className="mt-4 text-indigo-600 font-bold text-sm hover:underline">
@@ -389,6 +504,12 @@ const BookingPortal = () => {
                     </div>
                 )}
             </div>
+
+            <DocumentViewerModal
+                isOpen={!!viewingDoc}
+                onClose={() => setViewingDoc(null)}
+                booking={viewingDoc}
+            />
 
             {/* Footer / Status Bar */}
             <div className="bg-white border-t border-gray-200 p-4 text-center text-xs text-slate-400">

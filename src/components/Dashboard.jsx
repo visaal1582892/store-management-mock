@@ -5,9 +5,29 @@ const Dashboard = () => {
     const { bookings, warehouses } = useLogistics();
 
     // Metrics Logic
-    const activeBookings = bookings.filter(b => ['Confirmed'].includes(b.status));
+    const activeBookings = bookings.filter(b =>
+        ['Booked', 'Vehicle Reached'].includes(b.status) &&
+        new Date(b.date) >= new Date(new Date().setHours(0, 0, 0, 0))
+    );
 
-    const criticalDelays = bookings.filter(b => b.status === 'Delayed').length;
+    const criticalDelays = bookings.filter(b =>
+        b.scheduleStatus && b.scheduleStatus.toLowerCase().includes('delayed')
+    ).length;
+
+    const vehicleSlotBreaches = bookings.filter(b => {
+        if (!b.slotTime || !b.date) return false;
+        const [_, endStr] = b.slotTime.split(' - ');
+        const slotEnd = new Date(`${b.date}T${endStr}:00`);
+        const now = new Date();
+
+        // Breach if:
+        // 1. Vehicle Left AFTER slot end
+        if (b.exitTime && new Date(b.exitTime) > slotEnd) return true;
+        // 2. Vehicle still here (or not entered yet but booked) AND now is past slot end (and grace period?)
+        if (!b.exitTime && ['Booked', 'Vehicle Reached'].includes(b.status) && now > slotEnd) return true;
+
+        return false;
+    }).length;
 
     return (
         <div className="space-y-6">
@@ -22,7 +42,7 @@ const Dashboard = () => {
                 {[
                     { label: 'Active Bookings', value: activeBookings.length, color: 'text-indigo-600', sub: 'Inbound', bg: 'bg-indigo-50 border-indigo-100' },
 
-                    { label: 'Vehicle Slot Breaches', value: '0', color: 'text-emerald-600', sub: 'No violations', bg: 'bg-emerald-50 border-emerald-100' },
+                    { label: 'Vehicle Slot Breaches', value: vehicleSlotBreaches, color: vehicleSlotBreaches > 0 ? 'text-amber-600' : 'text-emerald-600', sub: vehicleSlotBreaches > 0 ? 'Review needed' : 'No violations', bg: vehicleSlotBreaches > 0 ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100' },
                     { label: 'Critical Delays', value: criticalDelays, color: 'text-rose-600', sub: 'Immediate attention', bg: 'bg-rose-50 border-rose-100' },
                 ].map((stat, i) => (
                     <div key={i} className={`border rounded-xl p-6 transition-all shadow-sm ${stat.bg}`}>
