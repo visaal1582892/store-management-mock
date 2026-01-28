@@ -28,7 +28,7 @@ const Layout = ({ children }) => {
         <div className="min-h-screen bg-gray-50 text-slate-900 font-sans selection:bg-indigo-100 selection:text-indigo-900 flex flex-col">
 
             {/* Top Header - Full Width & Fixed */}
-            <header className="fixed top-0 inset-x-0 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 z-300 shadow-sm transition-all">
+            <header className="fixed top-0 inset-x-0 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 md:px-6 z-[40] shadow-sm transition-all">
                 <div className="flex items-center gap-3">
                     {/* Mobile Logo / Text */}
                     <div className="flex items-center gap-2 font-bold text-slate-900 md:hidden">
@@ -83,7 +83,7 @@ const Layout = ({ children }) => {
 
                 {/* Sidebar - Below Header - Compact */}
                 <aside
-                    className={`fixed left-0 top-16 bottom-0 z-50 hidden md:flex flex-col bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out z-100 ${isHovered ? 'w-56' : 'w-16'}`}
+                    className={`fixed left-0 top-16 bottom-0 hidden md:flex flex-col bg-white border-r border-gray-200 shadow-sm transition-all duration-300 ease-in-out z-[30] ${isHovered ? 'w-56' : 'w-16'}`}
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}
                 >
@@ -142,7 +142,7 @@ const Layout = ({ children }) => {
                 </aside>
 
                 {/* Mobile Bottom Navigation */}
-                <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-50 flex justify-between items-center px-6 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] text-xs font-medium text-slate-500 pb-safe">
+                <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-[40] flex justify-between items-center px-6 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] text-xs font-medium text-slate-500 pb-safe">
                     {navItems.map((page) => (
                         <button
                             key={page.name}

@@ -68,7 +68,7 @@ const ScheduleModal = ({ isOpen, onClose, initialDate, warehouseId, slots, onSav
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-500">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]">
             <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 m-4 animate-in fade-in zoom-in duration-200">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="text-lg font-bold text-slate-900">
@@ -193,7 +193,7 @@ const BookingDetailsModal = ({ isOpen, onClose, data }) => {
     const { warehouseName, date, bookings } = data;
 
     return (
-        <div className="fixed inset-0 z-500 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
             <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden ring-1 ring-black/5 animate-fade-in-up">
                 <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/80">
                     <div>

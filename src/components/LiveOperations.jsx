@@ -315,7 +315,7 @@ const LiveOperations = () => {
             {/* Vendor Details Modal */}
             {
                 selectedBooking && (
-                    <div className="fixed inset-0 z-500 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
                         <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden ring-1 ring-black/5 animate-fade-in-up">
                             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/80">
                                 <h3 className="font-bold text-slate-900 flex items-center gap-2">
@@ -335,10 +335,10 @@ const LiveOperations = () => {
                             <div className="p-6 space-y-6">
                                 <div className="flex items-center gap-4">
                                     <div className="h-12 w-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold text-lg">
-                                        {selectedBooking.vendor.charAt(0)}
+                                        {selectedBooking.vendorName.charAt(0)}
                                     </div>
                                     <div>
-                                        <div className="text-lg font-bold text-slate-900">{selectedBooking.vendor}</div>
+                                        <div className="text-lg font-bold text-slate-900">{selectedBooking.vendorName}</div>
                                         <div className="text-xs text-slate-500 font-mono bg-slate-100 px-2 py-0.5 rounded inline-block">{selectedBooking.vendorId}</div>
                                     </div>
                                 </div>
