@@ -256,7 +256,7 @@ const BookingDetailsModal = ({ isOpen, onClose, data }) => {
                                             )}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wide whitespace-nowrap
                                                 ${b.status === 'Booked' ? 'bg-blue-50 text-blue-700 border-blue-200' :
                                                     b.status === 'Approval Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
                                                         b.status === 'Vehicle Reached' ? 'bg-purple-50 text-purple-700 border-purple-200' :

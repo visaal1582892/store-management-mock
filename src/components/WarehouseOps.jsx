@@ -166,7 +166,7 @@ const WarehouseOps = () => {
                                         {booking.boxes || '-'}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wide
+                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wide whitespace-nowrap
                                             ${booking.status === BOOKING_STATUS.PENDING ? 'bg-amber-50 text-amber-700 border-amber-200' :
                                                 booking.status === BOOKING_STATUS.BOOKED ? 'bg-blue-50 text-blue-700 border-blue-200' :
                                                     'bg-rose-50 text-rose-700 border-rose-200'}
