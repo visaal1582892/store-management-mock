@@ -137,6 +137,7 @@ const LiveOperations = () => {
                                         onChange={e => setFilters({ ...filters, vehicle: e.target.value })}
                                     />
                                 </th>
+                                <th className="px-6 py-2"></th>
                                 <th className="px-6 py-2">
                                     <select
                                         className="w-full text-xs border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 py-1.5"
@@ -158,7 +159,7 @@ const LiveOperations = () => {
                             {filteredBookings.map((booking) => (
                                 <tr key={booking.id} className="hover:bg-indigo-50/50 transition-colors group even:bg-slate-50/50 border-b border-gray-100 last:border-0">
                                     {/* Date & Time */}
-                                    <td className="px-6 py-4 bg-white border-r border-gray-50 align-top">
+                                    <td className="px-6 py-4 border-r border-gray-50 align-top">
                                         <div className="font-bold text-slate-900">{booking.date}</div>
                                         <span className="font-mono text-indigo-900 bg-indigo-50 px-2 py-1 rounded text-xs mt-1 inline-block">
                                             {booking.slot}
