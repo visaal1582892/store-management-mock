@@ -5,6 +5,7 @@ import { formatDateYYYYMMDD } from '../utils/dateUtils';
 import { BOOKING_STATUS } from '../utils/constants';
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import DocumentViewerModal from './DocumentViewerModal';
 
 const WarehouseOps = () => {
     const { bookings, approveBooking, rejectBooking } = useLogistics();
@@ -13,6 +14,9 @@ const WarehouseOps = () => {
     // Date Range State
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
+
+    // Document Viewer State
+    const [viewDocBooking, setViewDocBooking] = useState(null);
 
     // Filters
     const [filters, setFilters] = useState({
@@ -171,11 +175,16 @@ const WarehouseOps = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <div className="flex justify-center gap-1">
-                                            {booking.documents?.coa && <span title="COA" className="w-5 h-5 rounded bg-emerald-100 text-emerald-600 text-[10px] font-bold flex items-center justify-center cursor-help">C</span>}
-                                            {booking.documents?.invoice && <span title="Invoice" className="w-5 h-5 rounded bg-blue-100 text-blue-600 text-[10px] font-bold flex items-center justify-center cursor-help">I</span>}
-                                            {booking.documents?.lr && <span title="LR" className="w-5 h-5 rounded bg-purple-100 text-purple-600 text-[10px] font-bold flex items-center justify-center cursor-help">L</span>}
-                                        </div>
+                                        <button
+                                            onClick={() => setViewDocBooking(booking)}
+                                            className="text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center justify-center gap-1 mx-auto"
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            View Documents
+                                        </button>
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex justify-end gap-2">
@@ -197,6 +206,13 @@ const WarehouseOps = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Document Viewer Modal */}
+            <DocumentViewerModal
+                isOpen={!!viewDocBooking}
+                booking={viewDocBooking}
+                onClose={() => setViewDocBooking(null)}
+            />
         </div>
     );
 };
